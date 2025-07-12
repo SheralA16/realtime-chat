@@ -76,7 +76,7 @@ func TestClientRegistration(t *testing.T) {
 	}
 }
 
-// TestClientUnregistration prueba la cancelación del registro de clientes (VERSIÓN FINAL)
+// TestClientUnregistration prueba la cancelación del registro de clientes
 func TestClientUnregistration(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
@@ -150,7 +150,6 @@ func TestClientUnregistration(t *testing.T) {
 		}
 	case <-time.After(500 * time.Millisecond):
 		// Si llegamos aquí, asumimos que el canal está cerrado
-		// (no pudimos leer ni escribir en tiempo razonable)
 		t.Log("Canal parece estar cerrado (timeout en verificación)")
 	}
 }
@@ -173,20 +172,20 @@ func TestMessageBroadcast(t *testing.T) {
 		hub.register <- clients[i]
 	}
 
-	time.Sleep(300 * time.Millisecond) // Más tiempo para estabilizar
+	time.Sleep(300 * time.Millisecond)
 
-	// Limpiar TODOS los mensajes del sistema pendientes
+	// ✅ CORREGIDO: Limpiar mensajes del sistema de forma correcta
 	for _, client := range clients {
+		// Limpiar buffer de mensajes del sistema
+	clearLoop:
 		for {
 			select {
 			case <-client.send:
-				// Descartar mensaje del sistema
-				continue
+				// Continuar descartando mensajes
 			case <-time.After(10 * time.Millisecond):
-				// No hay más mensajes que descartar
-				break
+				// No hay más mensajes, salir del bucle
+				break clearLoop
 			}
-			break
 		}
 	}
 
@@ -205,7 +204,7 @@ func TestMessageBroadcast(t *testing.T) {
 	// Enviar mensaje al hub para difusión
 	hub.broadcast <- msgBytes
 
-	// Dar un poco de tiempo para la difusión
+	// Dar tiempo para la difusión
 	time.Sleep(50 * time.Millisecond)
 
 	// Verificar que todos los clientes recibieron el mensaje correcto
@@ -247,6 +246,61 @@ func TestMessageBroadcast(t *testing.T) {
 	}
 }
 
+// TestDuplicateUsernames prueba que no se permitan nombres duplicados
+func TestDuplicateUsernames(t *testing.T) {
+	hub := NewHub()
+	go hub.Run()
+
+	// Crear primer cliente con nombre "duplicatetest"
+	client1 := &Client{
+		hub:      hub,
+		send:     make(chan []byte, 256),
+		username: "duplicatetest",
+	}
+
+	// Registrar primer cliente
+	hub.register <- client1
+	time.Sleep(100 * time.Millisecond)
+
+	// Verificar que se registró
+	if hub.GetClientCount() != 1 {
+		t.Fatal("El primer cliente no se registró correctamente")
+	}
+
+	// Intentar registrar segundo cliente con el mismo nombre
+	client2 := &Client{
+		hub:      hub,
+		send:     make(chan []byte, 256),
+		username: "duplicatetest",
+	}
+
+	hub.register <- client2
+	time.Sleep(200 * time.Millisecond)
+
+	// Debería seguir habiendo solo 1 cliente (el duplicado no se debe registrar)
+	if hub.GetClientCount() != 1 {
+		t.Errorf("Se esperaba 1 cliente después del intento de duplicado, pero se encontraron %d", hub.GetClientCount())
+	}
+
+	// Verificar que client2 recibió mensaje de error
+	select {
+	case errorMsg := <-client2.send:
+		var errorData map[string]interface{}
+		if err := json.Unmarshal(errorMsg, &errorData); err != nil {
+			t.Errorf("Error parseando mensaje de error: %v", err)
+		} else {
+			if errorData["type"] != "error" {
+				t.Errorf("Se esperaba mensaje de tipo 'error', pero se recibió '%v'", errorData["type"])
+			}
+			if !strings.Contains(errorData["message"].(string), "ya está en uso") {
+				t.Errorf("El mensaje de error no indica que el nombre está en uso: %v", errorData["message"])
+			}
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Error("Client2 no recibió mensaje de error por nombre duplicado")
+	}
+}
+
 // TestConcurrentClientOperations prueba operaciones concurrentes de clientes
 func TestConcurrentClientOperations(t *testing.T) {
 	hub := NewHub()
@@ -277,7 +331,7 @@ func TestConcurrentClientOperations(t *testing.T) {
 				clientsMutex.Unlock()
 
 				hub.register <- client
-				time.Sleep(1 * time.Millisecond) // Pequeño delay para evitar spam
+				time.Sleep(1 * time.Millisecond)
 			}
 		}(i)
 	}
@@ -303,7 +357,7 @@ func TestConcurrentClientOperations(t *testing.T) {
 
 			for j := startIdx; j < endIdx && j < len(clients); j++ {
 				hub.unregister <- clients[j]
-				time.Sleep(1 * time.Millisecond) // Pequeño delay
+				time.Sleep(1 * time.Millisecond)
 			}
 		}(i)
 	}
@@ -360,7 +414,7 @@ func TestMessageStructures(t *testing.T) {
 	}
 }
 
-// TestWebSocketUpgrade prueba la actualización de WebSocket (CORREGIDO)
+// TestWebSocketUpgrade prueba la actualización de WebSocket
 func TestWebSocketUpgrade(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
@@ -384,7 +438,7 @@ func TestWebSocketUpgrade(t *testing.T) {
 	// Dar tiempo para que se registre el cliente
 	time.Sleep(200 * time.Millisecond)
 
-	// Leer y descartar mensaje del sistema (join message)
+	// Intentar leer mensaje del sistema (join message)
 	var systemMsg Message
 	if err := conn.ReadJSON(&systemMsg); err != nil {
 		t.Logf("No se pudo leer mensaje del sistema: %v", err)
@@ -404,7 +458,7 @@ func TestWebSocketUpgrade(t *testing.T) {
 		t.Fatalf("Error enviando mensaje: %v", err)
 	}
 
-	// Leer mensaje de respuesta (debería ser el mensaje difundido de vuelta)
+	// Leer mensaje de respuesta
 	var receivedMsg Message
 	if err := conn.ReadJSON(&receivedMsg); err != nil {
 		t.Fatalf("Error leyendo mensaje: %v", err)
@@ -419,17 +473,17 @@ func TestWebSocketUpgrade(t *testing.T) {
 	}
 }
 
-// TestRaceConditions prueba condiciones de carrera (MEJORADO)
+// TestRaceConditions prueba condiciones de carrera
 func TestRaceConditions(t *testing.T) {
 	hub := NewHub()
 	go hub.Run()
 
 	const numGoroutines = 10
-	const operationsPerGoroutine = 5 // Reducido para evitar spam
+	const operationsPerGoroutine = 5
 
 	var wg sync.WaitGroup
 
-	// Ejecutar operaciones concurrentes que podrían causar race conditions
+	// Ejecutar operaciones concurrentes
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
@@ -447,10 +501,10 @@ func TestRaceConditions(t *testing.T) {
 				hub.register <- client
 				time.Sleep(1 * time.Millisecond)
 
-				// Obtener conteo de clientes (operación de lectura)
+				// Obtener conteo de clientes
 				_ = hub.GetClientCount()
 
-				// Obtener usuarios conectados (operación de lectura)
+				// Obtener usuarios conectados
 				_ = hub.GetConnectedUsers()
 
 				// Enviar mensaje
@@ -473,8 +527,6 @@ func TestRaceConditions(t *testing.T) {
 	}
 
 	wg.Wait()
-
-	// Dar tiempo para que se procesen todas las operaciones
 	time.Sleep(500 * time.Millisecond)
 
 	// Al final no debería haber clientes
@@ -489,7 +541,7 @@ func BenchmarkMessageBroadcast(b *testing.B) {
 	go hub.Run()
 
 	// Crear algunos clientes
-	numClients := 10 // Reducido para benchmark
+	numClients := 10
 	clients := make([]*Client, numClients)
 
 	for i := 0; i < numClients; i++ {
@@ -513,7 +565,7 @@ func BenchmarkMessageBroadcast(b *testing.B) {
 		select {
 		case hub.broadcast <- msgBytes:
 		case <-time.After(10 * time.Millisecond):
-			// Timeout para evitar bloqueos en benchmark
+			// Timeout para evitar bloqueos
 		}
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -22,16 +23,21 @@ func main() {
 	fs := http.FileServer(http.Dir("./static/"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
+	// ⭐ RAILWAY: Obtener puerto de variable de entorno
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Puerto por defecto para desarrollo local
+	}
+
 	// Información de inicio
-	log.Println("🚀 Servidor de chat iniciado")
-	log.Println("📡 Puerto: 8080")
-	log.Println("🌐 URL: http://localhost:8080")
-	log.Println("💬 WebSocket endpoint: ws://localhost:8080/ws")
+	log.Println("🚀 GO O NO GO - Servidor de chat iniciado")
+	log.Printf("📡 Puerto: %s", port)
+	log.Println("💬 WebSocket endpoint: /ws")
 	log.Println("📁 Archivos estáticos servidos desde: ./static/")
 	log.Println("✅ Servidor listo para recibir conexiones...")
 
-	// Iniciar servidor HTTP
-	err := http.ListenAndServe(":8080", nil)
+	// ⭐ RAILWAY: Usar puerto dinámico
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatal("❌ Error iniciando servidor HTTP:", err)
 	}

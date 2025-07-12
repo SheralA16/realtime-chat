@@ -13,10 +13,9 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// CheckOrigin devuelve true si el request debe ser permitido a proceder
+	// ⭐ RAILWAY: Permitir conexiones desde cualquier origen
 	CheckOrigin: func(r *http.Request) bool {
-		// Permitir conexiones desde cualquier origen
-		// En producción, deberías validar el origen apropiadamente
+		// En Railway necesitamos permitir conexiones cross-origin
 		return true
 	},
 }
@@ -58,27 +57,27 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Actualizar la conexión HTTP a WebSocket primero
+	// Actualizar la conexión HTTP a WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("❌ Error actualizando conexión a WebSocket: %v", err)
 		return
 	}
 
-	// Crear cliente temporal para verificar disponibilidad
-	tempClient := &Client{
+	// Crear cliente
+	client := &Client{
 		hub:      hub,
 		conn:     conn,
 		send:     make(chan []byte, 256),
 		username: username,
 	}
 
-	// Intentar registrar - el hub manejará la validación de duplicados
-	tempClient.hub.register <- tempClient
+	// Registrar cliente en el hub (el hub manejará duplicados)
+	client.hub.register <- client
 
 	// Iniciar las goroutines
-	go tempClient.writePump()
-	go tempClient.readPump()
+	go client.writePump()
+	go client.readPump()
 
 	log.Printf("✅ Cliente '%s' procesado desde %s", username, r.RemoteAddr)
 }

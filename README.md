@@ -1,6 +1,6 @@
 # 🚀 GO O NO GO - Chat en Tiempo Real
 
-**Desarrollado por: JUNIOR_ALVINES**  
+**Desarrollado por: JUNIOR_ALVINES y SheralA16**  
 **GitHub: [JUNMPI/realtime-chat](https://github.com/JUNMPI/realtime-chat)**
 
 Un sistema de chat en tiempo real desarrollado en Go con WebSockets, interfaz Bootstrap y control de usuarios duplicados.
@@ -202,7 +202,8 @@ Railway maneja automáticamente:
 
 ## 📞 Soporte
 
-**Desarrollador:** JUNIOR_ALVINES  
+**Desarrollador:** JUNIOR_ALVINES 
+**Desarrollador:** SheralA16
 **GitHub:** [github.com/JUNMPI](https://github.com/JUNMPI)  
 **Proyecto:** [realtime-chat](https://github.com/JUNMPI/realtime-chat)
 

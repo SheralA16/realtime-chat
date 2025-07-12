@@ -3,7 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
-	"time"
+	"strings"
+	"unicode"
 
 	"github.com/gorilla/websocket"
 )
@@ -20,34 +21,64 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// validateUsername valida que el nombre de usuario sea válido
+func validateUsername(username string) bool {
+	// Verificar longitud
+	if len(username) < 2 || len(username) > 20 {
+		return false
+	}
+
+	// Verificar caracteres válidos (letras, números, guiones y guiones bajos)
+	for _, r := range username {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' && r != '_' {
+			return false
+		}
+	}
+
+	return true
+}
+
 // serveWS maneja las solicitudes WebSocket del cliente
 func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Printf("Error actualizando conexión a WebSocket: %v", err)
+	// Obtener nombre de usuario de los parámetros de consulta
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+
+	log.Printf("🔌 Intento de conexión WebSocket desde %s con username: '%s'", r.RemoteAddr, username)
+
+	// Validar nombre de usuario
+	if username == "" {
+		log.Printf("❌ Nombre de usuario vacío desde %s", r.RemoteAddr)
+		http.Error(w, "Nombre de usuario requerido", http.StatusBadRequest)
 		return
 	}
 
-	// Obtener nombre de usuario de los parámetros de consulta
-	username := r.URL.Query().Get("username")
-	if username == "" {
-		// Generar nombre de usuario por defecto si no se proporciona
-		username = "Usuario" + time.Now().Format("150405")
+	if !validateUsername(username) {
+		log.Printf("❌ Nombre de usuario inválido: '%s' desde %s", username, r.RemoteAddr)
+		http.Error(w, "Nombre de usuario inválido", http.StatusBadRequest)
+		return
 	}
 
-	// Crear nuevo cliente
-	client := &Client{
+	// Actualizar la conexión HTTP a WebSocket primero
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("❌ Error actualizando conexión a WebSocket: %v", err)
+		return
+	}
+
+	// Crear cliente temporal para verificar disponibilidad
+	tempClient := &Client{
 		hub:      hub,
 		conn:     conn,
-		send:     make(chan []byte, 256), // Canal con buffer para evitar bloqueos
+		send:     make(chan []byte, 256),
 		username: username,
 	}
 
-	// Registrar cliente en el hub
-	client.hub.register <- client
+	// Intentar registrar - el hub manejará la validación de duplicados
+	tempClient.hub.register <- tempClient
 
-	// Permitir recolección de memoria de referencia al cliente
-	// ejecutando todas las goroutines
-	go client.writePump()
-	go client.readPump()
+	// Iniciar las goroutines
+	go tempClient.writePump()
+	go tempClient.readPump()
+
+	log.Printf("✅ Cliente '%s' procesado desde %s", username, r.RemoteAddr)
 }

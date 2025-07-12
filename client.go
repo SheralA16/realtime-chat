@@ -55,9 +55,18 @@ func (c *Client) readPump() {
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+
+	// ✅ Manejar error de SetReadDeadline
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Printf("Error estableciendo deadline de lectura para '%s': %v", c.username, err)
+		return
+	}
+
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		// ✅ Manejar error de SetReadDeadline en pong handler
+		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			log.Printf("Error estableciendo deadline en pong handler para '%s': %v", c.username, err)
+		}
 		return nil
 	})
 
@@ -65,7 +74,9 @@ func (c *Client) readPump() {
 		_, messageBytes, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Printf("Error inesperado de WebSocket para '%s': %v", c.username, err)
+			} else {
+				log.Printf("Cliente '%s' cerró conexión: %v", c.username, err)
 			}
 			break
 		}
@@ -88,12 +99,17 @@ func (c *Client) readPump() {
 		// Serializar mensaje completo
 		messageJSON, err := json.Marshal(msg)
 		if err != nil {
-			log.Printf("Error serializando mensaje: %v", err)
+			log.Printf("Error serializando mensaje de '%s': %v", c.username, err)
 			continue
 		}
 
 		// Enviar al hub para difusión
-		c.hub.broadcast <- messageJSON
+		select {
+		case c.hub.broadcast <- messageJSON:
+			log.Printf("💬 Mensaje de '%s' enviado al hub", c.username)
+		default:
+			log.Printf("⚠️ Hub ocupado, mensaje de '%s' descartado", c.username)
+		}
 	}
 }
 
@@ -112,33 +128,66 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			// ✅ Manejar error de SetWriteDeadline
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("Error estableciendo deadline de escritura para '%s': %v", c.username, err)
+				return
+			}
+
 			if !ok {
 				// El hub cerró el canal
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
+					log.Printf("Error enviando mensaje de cierre para '%s': %v", c.username, err)
+				}
 				return
 			}
 
 			w, err := c.conn.NextWriter(websocket.TextMessage)
 			if err != nil {
+				log.Printf("Error obteniendo writer para '%s': %v", c.username, err)
 				return
 			}
-			w.Write(message)
+
+			// ✅ Manejar error de Write
+			if _, err := w.Write(message); err != nil {
+				log.Printf("Error escribiendo mensaje para '%s': %v", c.username, err)
+				w.Close()
+				return
+			}
 
 			// Agregar mensajes de chat en cola al mensaje actual
 			n := len(c.send)
 			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.send)
+				if _, err := w.Write(newline); err != nil {
+					log.Printf("Error escribiendo newline para '%s': %v", c.username, err)
+					w.Close()
+					return
+				}
+
+				queuedMessage := <-c.send
+				if _, err := w.Write(queuedMessage); err != nil {
+					log.Printf("Error escribiendo mensaje en cola para '%s': %v", c.username, err)
+					w.Close()
+					return
+				}
 			}
 
+			// ✅ Manejar error de Close
 			if err := w.Close(); err != nil {
+				log.Printf("Error cerrando writer para '%s': %v", c.username, err)
 				return
 			}
 
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			// ✅ Manejar error de SetWriteDeadline para ping
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Printf("Error estableciendo deadline para ping para '%s': %v", c.username, err)
+				return
+			}
+
+			// ✅ Manejar error de WriteMessage para ping
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Printf("Error enviando ping para '%s': %v", c.username, err)
 				return
 			}
 		}

@@ -65,8 +65,8 @@ func (h *Hub) Run() {
 	}
 }
 
-// IsUsernameAvailable verifica si un nombre de usuario está disponible
-func (h *Hub) IsUsernameAvailable(username string) bool {
+// isUsernameAvailable verifica si un nombre de usuario está disponible (método privado)
+func (h *Hub) isUsernameAvailable(username string) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -88,7 +88,7 @@ func (h *Hub) IsUsernameAvailable(username string) bool {
 // registerClient registra un nuevo cliente en el hub
 func (h *Hub) registerClient(client *Client) {
 	// ⭐ VALIDACIÓN: Verificar si el nombre de usuario ya está en uso
-	if !h.IsUsernameAvailable(client.username) {
+	if !h.isUsernameAvailable(client.username) {
 		log.Printf("❌ Intento de conexión con nombre duplicado: '%s'", client.username)
 
 		// Enviar mensaje de error al cliente
@@ -140,7 +140,7 @@ func (h *Hub) registerClient(client *Client) {
 
 	log.Printf("✅ Cliente '%s' conectado exitosamente. Total de clientes: %d", client.username, clientCount)
 
-	// ⭐ NUEVO: Enviar mensaje de éxito al cliente
+	// ⭐ Enviar mensaje de éxito al cliente
 	successMsg := map[string]interface{}{
 		"type":     "connectionSuccess",
 		"message":  "Conectado exitosamente como " + client.username,

@@ -44,10 +44,6 @@ type Client struct {
 }
 
 // readPump bombea mensajes desde la conexión WebSocket al hub
-//
-// La aplicación ejecuta readPump en una goroutine per-conexión. La aplicación
-// asegura que hay como máximo un lector en una conexión ejecutando todos los
-// reads desde esta goroutine.
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
@@ -56,14 +52,12 @@ func (c *Client) readPump() {
 
 	c.conn.SetReadLimit(maxMessageSize)
 
-	// ✅ Manejar error de SetReadDeadline
 	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 		log.Printf("Error estableciendo deadline de lectura para '%s': %v", c.username, err)
 		return
 	}
 
 	c.conn.SetPongHandler(func(string) error {
-		// ✅ Manejar error de SetReadDeadline en pong handler
 		if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 			log.Printf("Error estableciendo deadline en pong handler para '%s': %v", c.username, err)
 		}
@@ -113,11 +107,7 @@ func (c *Client) readPump() {
 	}
 }
 
-// writePump bombea mensajes desde el hub a la conexión WebSocket
-//
-// Una goroutine que ejecuta writePump se inicia para cada conexión. La aplicación
-// asegura que hay como máximo un writer en una conexión ejecutando todos los
-// writes desde esta goroutine.
+// ⭐ CORREGIDO: writePump - Un mensaje por WebSocket frame
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -128,7 +118,6 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			// ✅ Manejar error de SetWriteDeadline
 			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.Printf("Error estableciendo deadline de escritura para '%s': %v", c.username, err)
 				return
@@ -142,50 +131,41 @@ func (c *Client) writePump() {
 				return
 			}
 
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				log.Printf("Error obteniendo writer para '%s': %v", c.username, err)
-				return
-			}
-
-			// ✅ Manejar error de Write
-			if _, err := w.Write(message); err != nil {
+			// ⭐ CORREGIDO: Enviar cada mensaje como un frame separado
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				log.Printf("Error escribiendo mensaje para '%s': %v", c.username, err)
-				w.Close()
 				return
 			}
 
-			// Agregar mensajes de chat en cola al mensaje actual
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				if _, err := w.Write(newline); err != nil {
-					log.Printf("Error escribiendo newline para '%s': %v", c.username, err)
-					w.Close()
-					return
+			// ⭐ IMPORTANTE: NO concatenar mensajes adicionales
+			// Cada mensaje debe ir en su propio WebSocket frame
+			// Procesar mensajes adicionales en el buffer sin concatenar
+		additionalMessages:
+			for {
+				select {
+				case nextMessage := <-c.send:
+					// Enviar cada mensaje adicional como frame separado
+					if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+						log.Printf("Error estableciendo deadline para mensaje adicional: %v", err)
+						return
+					}
+					if err := c.conn.WriteMessage(websocket.TextMessage, nextMessage); err != nil {
+						log.Printf("Error enviando mensaje adicional para '%s': %v", c.username, err)
+						return
+					}
+				default:
+					// No hay más mensajes en buffer
+					break additionalMessages
 				}
-
-				queuedMessage := <-c.send
-				if _, err := w.Write(queuedMessage); err != nil {
-					log.Printf("Error escribiendo mensaje en cola para '%s': %v", c.username, err)
-					w.Close()
-					return
-				}
-			}
-
-			// ✅ Manejar error de Close
-			if err := w.Close(); err != nil {
-				log.Printf("Error cerrando writer para '%s': %v", c.username, err)
-				return
 			}
 
 		case <-ticker.C:
-			// ✅ Manejar error de SetWriteDeadline para ping
+			// Enviar ping
 			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.Printf("Error estableciendo deadline para ping para '%s': %v", c.username, err)
 				return
 			}
 
-			// ✅ Manejar error de WriteMessage para ping
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Printf("Error enviando ping para '%s': %v", c.username, err)
 				return

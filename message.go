@@ -2,12 +2,22 @@ package main
 
 import "time"
 
+// ImageData representa los datos de una imagen
+type ImageData struct {
+	Data string `json:"data"` // Base64 data URL
+	Name string `json:"name"` // Nombre del archivo
+	Type string `json:"type"` // MIME type
+	Size int64  `json:"size"` // Tamaño en bytes
+}
+
 // Message representa un mensaje de chat
 type Message struct {
-	Username  string    `json:"username"`
-	Content   string    `json:"content"`
-	Timestamp time.Time `json:"timestamp"`
-	Type      string    `json:"type"` // "message", "system", "join", "leave"
+	Username  string     `json:"username"`
+	Content   string     `json:"content"`
+	Timestamp time.Time  `json:"timestamp"`
+	Type      string     `json:"type"`            // "message", "system", "join", "leave"
+	Image     *ImageData `json:"image,omitempty"` // Datos de imagen opcionales
+	HasImage  bool       `json:"hasImage"`        // Indica si el mensaje tiene imagen
 }
 
 // MessageType define los tipos de mensajes
@@ -25,6 +35,19 @@ func NewMessage(username, content string) *Message {
 		Content:   content,
 		Timestamp: time.Now(),
 		Type:      MessageTypeMessage,
+		HasImage:  false,
+	}
+}
+
+// NewMessageWithImage crea un nuevo mensaje de chat con imagen
+func NewMessageWithImage(username, content string, imageData *ImageData) *Message {
+	return &Message{
+		Username:  username,
+		Content:   content,
+		Timestamp: time.Now(),
+		Type:      MessageTypeMessage,
+		Image:     imageData,
+		HasImage:  true,
 	}
 }
 
@@ -35,5 +58,6 @@ func NewSystemMessage(content string) *Message {
 		Content:   content,
 		Timestamp: time.Now(),
 		Type:      MessageTypeSystem,
+		HasImage:  false,
 	}
 }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GO O NO GO - Chat en Tiempo Real | Sheral_Altamirano</title>
+    <title>GO O NO GO - Chat en Tiempo Real | Sheral_Altamirano </title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -82,6 +82,62 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
+
+        /* ⭐ NUEVOS ESTILOS PARA IMÁGENES */
+        .message-image {
+            max-width: 300px;
+            max-height: 200px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+
+        .message-image:hover {
+            transform: scale(1.02);
+        }
+
+        .image-modal .modal-dialog {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .image-modal .modal-content {
+            background: transparent;
+            border: none;
+        }
+
+        .image-modal .modal-body {
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .file-input-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input-hidden {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
     </style>
 </head>
 
@@ -148,20 +204,47 @@
                                 </div>
 
                                 <!-- Sección de Mensajes -->
-                                <div class="row g-2 align-items-center d-none" id="messageSection">
-                                    <div class="col">
-                                        <input type="text" class="form-control" id="messageInput"
-                                            placeholder="Escribe tu mensaje..." maxlength="500">
+                                <div class="d-none" id="messageSection">
+                                    <!-- Preview de imagen seleccionada -->
+                                    <div class="mb-2 d-none" id="imagePreviewContainer">
+                                        <div class="alert alert-info d-flex align-items-center">
+                                            <img id="imagePreview" class="image-preview me-3" />
+                                            <div class="flex-grow-1">
+                                                <div class="fw-bold">Imagen seleccionada</div>
+                                                <div class="text-muted small" id="imageInfo"></div>
+                                            </div>
+                                            <button class="btn btn-outline-danger btn-sm" id="removeImageBtn">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="col-auto">
-                                        <button class="btn btn-success" id="sendBtn" disabled>
-                                            <i class="bi bi-send-fill"></i> Enviar
-                                        </button>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button class="btn btn-danger" id="disconnectBtn">
-                                            <i class="bi bi-power"></i> NO GO
-                                        </button>
+
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col">
+                                            <input type="text" class="form-control" id="messageInput"
+                                                placeholder="Escribe tu mensaje..." maxlength="500">
+                                        </div>
+                                        <div class="col-auto">
+                                            <!-- Botón para seleccionar imagen -->
+                                            <div class="file-input-container">
+                                                <input type="file" class="file-input-hidden" id="imageInput"
+                                                    accept="image/*">
+                                                <button class="btn btn-outline-success" id="imageBtn"
+                                                    title="Enviar imagen">
+                                                    <i class="bi bi-image"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-success" id="sendBtn" disabled>
+                                                <i class="bi bi-send-fill"></i> Enviar
+                                            </button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button class="btn btn-danger" id="disconnectBtn">
+                                                <i class="bi bi-power"></i> NO GO
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -190,6 +273,22 @@
                         <i class="bi bi-code-slash"></i> Desarrollado por JUNIOR_ALVINES & SheralA16 |
                         <i class="bi bi-github"></i> github.com/JUNMPI/realtime-chat
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⭐ MODAL PARA VER IMÁGENES EN GRANDE -->
+    <div class="modal fade image-modal" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-white">Ver Imagen</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImage" src="" alt="Imagen completa" />
                 </div>
             </div>
         </div>
@@ -230,6 +329,8 @@
                 this.username = '';
                 this.connected = false;
                 this.users = new Map();
+                this.selectedImage = null;
+                this.messageHistory = []; // ⭐ HISTORIAL LOCAL PERSISTENTE
                 this.init();
             }
 
@@ -253,7 +354,16 @@
                     errorToast: document.getElementById('errorToast'),
                     errorToastBody: document.getElementById('errorToastBody'),
                     successToast: document.getElementById('successToast'),
-                    successToastBody: document.getElementById('successToastBody')
+                    successToastBody: document.getElementById('successToastBody'),
+                    // ⭐ ELEMENTOS PARA IMÁGENES
+                    imageInput: document.getElementById('imageInput'),
+                    imageBtn: document.getElementById('imageBtn'),
+                    imagePreview: document.getElementById('imagePreview'),
+                    imagePreviewContainer: document.getElementById('imagePreviewContainer'),
+                    imageInfo: document.getElementById('imageInfo'),
+                    removeImageBtn: document.getElementById('removeImageBtn'),
+                    imageModal: document.getElementById('imageModal'),
+                    modalImage: document.getElementById('modalImage')
                 };
 
                 this.setupEventListeners();
@@ -277,13 +387,110 @@
                 });
 
                 this.elements.messageInput.addEventListener('input', () => {
-                    this.elements.sendBtn.disabled = !this.elements.messageInput.value.trim();
+                    this.updateSendButton();
                 });
 
                 // Limpiar errores cuando el usuario escriba
                 this.elements.usernameInput.addEventListener('input', () => {
                     this.clearUsernameError();
                 });
+
+                // ⭐ EVENTOS PARA IMÁGENES
+                this.elements.imageBtn.addEventListener('click', () => {
+                    this.elements.imageInput.click();
+                });
+
+                this.elements.imageInput.addEventListener('change', (e) => {
+                    this.handleImageSelection(e);
+                });
+
+                this.elements.removeImageBtn.addEventListener('click', () => {
+                    this.clearImageSelection();
+                });
+
+                // ⭐ MANEJO SEGURO DEL MODAL
+                this.elements.imageModal.addEventListener('hide.bs.modal', (e) => {
+                    this.elements.modalImage.src = '';
+                });
+
+                this.elements.imageModal.addEventListener('hidden.bs.modal', () => {
+                    this.elements.modalImage.src = '';
+                    console.log('✅ Modal cerrado correctamente');
+                });
+            }
+
+            // ⭐ FUNCIÓN PARA ACTUALIZAR EL BOTÓN DE ENVÍO
+            updateSendButton() {
+                const hasText = this.elements.messageInput.value.trim().length > 0;
+                const hasImage = this.selectedImage !== null;
+                this.elements.sendBtn.disabled = !hasText && !hasImage;
+            }
+
+            // ⭐ MANEJO DE SELECCIÓN DE IMÁGENES
+            handleImageSelection(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                // Validar tipo de archivo
+                if (!file.type.startsWith('image/')) {
+                    this.showErrorToast('Por favor selecciona un archivo de imagen válido');
+                    return;
+                }
+
+                // Validar tamaño (máximo 5MB)
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    this.showErrorToast('La imagen es muy grande. Máximo 5MB permitido');
+                    return;
+                }
+
+                // Leer archivo como Data URL
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.selectedImage = {
+                        data: e.target.result,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type
+                    };
+
+                    // Mostrar preview
+                    this.showImagePreview();
+                    this.updateSendButton();
+                };
+
+                reader.onerror = () => {
+                    this.showErrorToast('Error leyendo la imagen');
+                };
+
+                reader.readAsDataURL(file);
+            }
+
+            // ⭐ MOSTRAR PREVIEW DE IMAGEN
+            showImagePreview() {
+                if (!this.selectedImage) return;
+
+                this.elements.imagePreview.src = this.selectedImage.data;
+                this.elements.imageInfo.textContent = `${this.selectedImage.name} (${this.formatFileSize(this.selectedImage.size)})`;
+                this.elements.imagePreviewContainer.classList.remove('d-none');
+            }
+
+            // ⭐ LIMPIAR SELECCIÓN DE IMAGEN
+            clearImageSelection() {
+                this.selectedImage = null;
+                this.elements.imageInput.value = '';
+                this.elements.imagePreviewContainer.classList.add('d-none');
+                this.elements.imagePreview.src = '';
+                this.updateSendButton();
+            }
+
+            // ⭐ FORMATEAR TAMAÑO DE ARCHIVO
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
 
             connect() {
@@ -355,6 +562,8 @@
                             this.updateUsersList(data.users);
                         } else {
                             console.log('💬 Mensaje regular recibido');
+                            // ⭐ AGREGAR AL HISTORIAL LOCAL PERSISTENTE
+                            this.addToLocalHistory(data);
                             this.displayMessage(data);
                         }
                     } catch (error) {
@@ -362,8 +571,9 @@
                     }
                 };
 
+                // ⭐ MANEJO MEJORADO DE CIERRE DE CONEXIÓN
                 this.socket.onclose = (event) => {
-                    console.log('🔌 WebSocket cerrado, código:', event.code);
+                    console.log('🔌 WebSocket cerrado, código:', event.code, 'razón:', event.reason);
 
                     if (!this.connected) {
                         // Si no se había conectado exitosamente, fue un error
@@ -374,6 +584,9 @@
                         this.updateStatus('disconnected', 'Desconectado');
                         this.updateConnectionDetails('warning', 'Desconectado del servidor');
                         this.toggleUI(false);
+
+                        // ⭐ MANTENER HISTORIAL AL DESCONECTAR
+                        this.redisplayMessages();
                     }
                 };
 
@@ -381,6 +594,62 @@
                     console.error('❌ Error WebSocket:', error);
                     this.handleConnectionError('Error de conexión al servidor');
                 };
+            }
+
+            // ⭐ NUEVA FUNCIÓN PARA AGREGAR AL HISTORIAL LOCAL
+            addToLocalHistory(message) {
+                // Solo agregar mensajes normales (no del sistema de conexión)
+                if (message.type === 'message') {
+                    // Verificar si el mensaje ya existe (evitar duplicados)
+                    const exists = this.messageHistory.some(m =>
+                        m.timestamp === message.timestamp &&
+                        m.username === message.username &&
+                        m.content === message.content
+                    );
+
+                    if (!exists) {
+                        this.messageHistory.push(message);
+                        console.log(`📜 Mensaje agregado al historial local. Total: ${this.messageHistory.length}`);
+                    }
+                }
+            }
+
+            // ⭐ NUEVA FUNCIÓN PARA RECARGAR MENSAJES DEL HISTORIAL
+            redisplayMessages() {
+                console.log('🔄 Recargando mensajes del historial local');
+
+                // Guardar scroll position
+                const wasAtBottom = this.isScrolledToBottom();
+
+                // Limpiar área de mensajes
+                this.elements.messages.innerHTML = '';
+
+                if (this.messageHistory.length === 0) {
+                    this.elements.messages.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="bi bi-chat-dots fs-1"></i>
+                            <p>No hay mensajes aún. ¡Sé el primero en escribir!</p>
+                            <small>Chat desarrollado por JUNIOR_ALVINES & SheralA16</small>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Volver a mostrar todos los mensajes del historial
+                this.messageHistory.forEach(message => {
+                    this.displayMessage(message, false); // false = no agregar al historial otra vez
+                });
+
+                // Restaurar scroll position
+                if (wasAtBottom) {
+                    this.scrollToBottom();
+                }
+            }
+
+            // ⭐ VERIFICAR SI ESTÁ EN EL BOTTOM
+            isScrolledToBottom() {
+                const container = this.elements.messages;
+                return container.scrollTop + container.clientHeight >= container.scrollHeight - 10;
             }
 
             handleConnectionSuccess(data) {
@@ -431,21 +700,55 @@
                 }
             }
 
+            // ⭐ FUNCIÓN MEJORADA PARA ENVIAR MENSAJES
             sendMessage() {
-                if (!this.connected || !this.elements.messageInput.value.trim()) {
+                if (!this.connected) return;
+
+                const textContent = this.elements.messageInput.value.trim();
+
+                // Debe tener texto o imagen
+                if (!textContent && !this.selectedImage) {
                     return;
                 }
 
                 const messageData = {
-                    content: this.elements.messageInput.value.trim()
+                    content: textContent || '',
+                    hasImage: !!this.selectedImage
                 };
 
-                this.socket.send(JSON.stringify(messageData));
-                this.elements.messageInput.value = '';
-                this.elements.sendBtn.disabled = true;
+                // Si hay imagen, incluir datos
+                if (this.selectedImage) {
+                    messageData.image = {
+                        data: this.selectedImage.data,
+                        name: this.selectedImage.name,
+                        type: this.selectedImage.type,
+                        size: this.selectedImage.size
+                    };
+                }
+
+                // Enviar mensaje
+                try {
+                    this.socket.send(JSON.stringify(messageData));
+
+                    // Limpiar inputs
+                    this.elements.messageInput.value = '';
+                    this.clearImageSelection();
+                    this.updateSendButton();
+
+                    console.log('✅ Mensaje enviado:', messageData.hasImage ? 'con imagen' : 'solo texto');
+                } catch (error) {
+                    console.error('❌ Error enviando mensaje:', error);
+                    this.showErrorToast('Error enviando mensaje');
+                }
             }
 
-            displayMessage(message) {
+            // ⭐ FUNCIÓN MEJORADA PARA MOSTRAR MENSAJES
+            displayMessage(message, addToHistory = true) {
+                // ⭐ AGREGAR AL HISTORIAL LOCAL (evitar duplicados)
+                if (addToHistory && message.type === 'message') {
+                    this.addToLocalHistory(message);
+                }
+
                 const isOwn = message.username === this.username;
                 const isSystem = message.type === 'system' || message.type === 'join' || message.type === 'leave';
 
@@ -470,11 +773,34 @@
                     const cardClass = isOwn ? 'message-own text-white' : 'bg-light';
                     const alignment = isOwn ? 'ms-auto' : 'me-auto';
 
+                    let messageContent = '';
+
+                    // ⭐ MOSTRAR IMAGEN SI EXISTE
+                    if (message.image && message.image.data) {
+                        messageContent += `
+                            <div class="mb-2">
+                                <img src="${message.image.data}" 
+                                     class="message-image" 
+                                     alt="Imagen compartida"
+                                     onclick="showImageModal('${message.image.data}')"
+                                     loading="lazy" />
+                                <div class="small text-muted mt-1">
+                                    <i class="bi bi-image"></i> ${this.escapeHtml(message.image.name)}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // ⭐ MOSTRAR TEXTO SI EXISTE
+                    if (message.content && message.content.trim()) {
+                        messageContent += `<div>${this.escapeHtml(message.content)}</div>`;
+                    }
+
                     messageElement.innerHTML = `
                         <div class="card ${cardClass} ${alignment}" style="max-width: 70%;">
                             <div class="card-body py-2 px-3">
                                 ${!isOwn ? `<div class="fw-bold small mb-1">${this.escapeHtml(message.username)}</div>` : ''}
-                                <div>${this.escapeHtml(message.content)}</div>
+                                ${messageContent}
                                 <div class="message-time mt-1">${time}</div>
                             </div>
                         </div>
@@ -620,7 +946,7 @@
                     `;
                     this.updateOnlineCount(0);
                 }
-                this.elements.sendBtn.disabled = true;
+                this.updateSendButton();
             }
 
             showUsernameError(message) {
@@ -656,11 +982,26 @@
             }
         }
 
+        // ⭐ FUNCIÓN GLOBAL PARA EL MODAL (ACCESIBLE DESDE ONCLICK)
+        window.showImageModal = function (imageSrc) {
+            try {
+                const modalImage = document.getElementById('modalImage');
+                const imageModal = document.getElementById('imageModal');
+
+                modalImage.src = imageSrc;
+                const modal = new bootstrap.Modal(imageModal);
+                modal.show();
+                console.log('🖼️ Modal de imagen abierto desde función global');
+            } catch (error) {
+                console.error('❌ Error abriendo modal desde función global:', error);
+            }
+        };
+
         // Inicializar cuando el DOM esté listo
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🎬 DOM cargado, iniciando GO O NO GO Chat...');
             console.log('👨‍💻 Desarrollado por JUNIOR_ALVINES');
-            new ChatClient();
+            window.chatClient = new ChatClient(); // ⭐ HACER GLOBAL PARA DEBUGGING
         });
     </script>
 </body>

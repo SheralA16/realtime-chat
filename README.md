@@ -1,6 +1,7 @@
 # 🚀 GO O NO GO - Chat en Tiempo Real con Soporte para Imágenes
 
 **Desarrollado por: JUNIOR_ALVINES y SheralA16**  
+**GitHub: [JUNMPI/realtime-chat](https://github.com/JUNMPI/realtime-chat)**
 **GitHub: [SheralA16/realtime-chat](https://github.com/SheralA16/realtime-chat)**
 
 Un sistema de chat en tiempo real desarrollado en Go con WebSockets, interfaz Bootstrap y **soporte completo para envío de imágenes**.

@@ -23,7 +23,7 @@ type Hub struct {
 	// Historial de todos los usuarios que se han conectado
 	userHistory map[string]*UserStatus
 
-	// ⭐ NUEVO: Historial de mensajes para mantener conversación
+	// ⭐ AGREGAR ESTAS DOS LÍNEAS:
 	messageHistory []*Message
 	maxHistorySize int
 
@@ -43,13 +43,14 @@ type Hub struct {
 // NewHub crea una nueva instancia del hub de chat
 func NewHub() *Hub {
 	return &Hub{
-		broadcast:      make(chan []byte, 1000), // Buffer para evitar bloqueos
-		register:       make(chan *Client, 100),
-		unregister:     make(chan *Client, 100),
-		clients:        make(map[*Client]bool),
-		userHistory:    make(map[string]*UserStatus),
-		messageHistory: make([]*Message, 0), // ⭐ AÑADIDO
-		maxHistorySize: 50,                  // ⭐ AÑADIDO
+		broadcast:   make(chan []byte, 1000), // Buffer para evitar bloqueos
+		register:    make(chan *Client, 100),
+		unregister:  make(chan *Client, 100),
+		clients:     make(map[*Client]bool),
+		userHistory: make(map[string]*UserStatus),
+		// ⭐ AGREGAR ESTAS LÍNEAS:
+		messageHistory: make([]*Message, 0),
+		maxHistorySize: 50,
 	}
 }
 
@@ -60,18 +61,18 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
-			h.registerClient(client)
+			h.registerClient(client) //nuevo usuario
 
 		case client := <-h.unregister:
-			h.unregisterClient(client)
+			h.unregisterClient(client) //usuario desconectado
 
 		case message := <-h.broadcast:
-			h.broadcastMessage(message)
+			h.broadcastMessage(message) //mensaje entrante
 		}
 	}
 }
 
-// isUsernameAvailable verifica si un nombre de usuario está disponible
+// isUsernameAvailable verifica si un nombre de usuario está disponible (método privado)
 func (h *Hub) isUsernameAvailable(username string) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -160,9 +161,6 @@ func (h *Hub) registerClient(client *Client) {
 		}
 	}
 
-	// ⭐ IMPORTANTE: NO enviar historial a nuevos usuarios
-	// Solo reciben mensajes desde el momento que se conectan
-
 	// Enviar lista de usuarios actualizada
 	h.broadcastUserList()
 
@@ -215,9 +213,6 @@ func (h *Hub) unregisterClient(client *Client) {
 
 // broadcastMessage envía un mensaje a todos los clientes conectados
 func (h *Hub) broadcastMessage(message []byte) {
-	// ⭐ AGREGAR MENSAJE AL HISTORIAL PARA MANTENER CONVERSACIÓN
-	h.addToMessageHistory(message)
-
 	h.mu.RLock()
 	clients := make([]*Client, 0, len(h.clients))
 	for client := range h.clients {
@@ -241,30 +236,6 @@ func (h *Hub) broadcastMessage(message []byte) {
 			close(client.send)
 			log.Printf("Cliente '%s' eliminado por canal bloqueado", client.username)
 		}
-	}
-}
-
-// ⭐ NUEVO: addToMessageHistory agrega un mensaje al historial
-func (h *Hub) addToMessageHistory(messageBytes []byte) {
-	var msg Message
-	if err := json.Unmarshal(messageBytes, &msg); err != nil {
-		log.Printf("❌ Error parseando mensaje para historial: %v", err)
-		return
-	}
-
-	// Solo agregar mensajes de chat al historial (no mensajes del sistema de conexión/desconexión)
-	if msg.Type == MessageTypeMessage {
-		h.mu.Lock()
-		h.messageHistory = append(h.messageHistory, &msg)
-
-		// Mantener solo los últimos N mensajes
-		if len(h.messageHistory) > h.maxHistorySize {
-			// Eliminar el mensaje más antiguo
-			h.messageHistory = h.messageHistory[1:]
-		}
-		h.mu.Unlock()
-
-		log.Printf("📜 Mensaje agregado al historial. Total: %d mensajes", len(h.messageHistory))
 	}
 }
 
@@ -333,12 +304,14 @@ func (h *Hub) GetUserHistory() map[string]*UserStatus {
 	return history
 }
 
-// ⭐ NUEVO: GetMessageHistory devuelve el historial de mensajes (para debugging)
+// ⭐ AGREGAR ESTE MÉTODO AL FINAL DE tu hub.go
+
+// GetMessageHistory devuelve el historial de mensajes (para debugging y tests)
 func (h *Hub) GetMessageHistory() []*Message {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	// Crear copia del slice
+	// Crear copia del slice para evitar problemas de concurrencia
 	history := make([]*Message, len(h.messageHistory))
 	copy(history, h.messageHistory)
 	return history

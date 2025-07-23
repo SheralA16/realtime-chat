@@ -304,8 +304,6 @@ func (h *Hub) GetUserHistory() map[string]*UserStatus {
 	return history
 }
 
-// ⭐ AGREGAR ESTE MÉTODO AL FINAL DE tu hub.go
-
 // GetMessageHistory devuelve el historial de mensajes (para debugging y tests)
 func (h *Hub) GetMessageHistory() []*Message {
 	h.mu.RLock()

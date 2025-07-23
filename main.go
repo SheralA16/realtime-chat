@@ -23,7 +23,7 @@ func main() {
 	fs := http.FileServer(http.Dir("./static/"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
-	// ⭐ RAILWAY: Obtener puerto de variable de entorno
+	// RAILWAY: Obtener puerto de variable de entorno
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080" // Puerto por defecto para desarrollo local
@@ -33,7 +33,6 @@ func main() {
 	log.Println("🚀 GO O NO GO - Servidor de chat iniciado")
 	log.Printf("📡 Puerto: %s", port)
 	log.Println("💬 WebSocket endpoint: /ws")
-	log.Println("🖼️ Soporte para imágenes habilitado (máx. 5MB)")
 	log.Println("📁 Archivos estáticos servidos desde: ./static/")
 	log.Println("✅ Servidor listo para recibir conexiones...")
 
@@ -57,11 +56,6 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// Configurar headers para mejor manejo de archivos multimedia
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Expires", "0")
 
 	// Servir el archivo index.html
 	http.ServeFile(w, r, "index.html")

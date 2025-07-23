@@ -195,7 +195,7 @@ func (c *Client) sendErrorMessage(errorText string) {
 	}
 }
 
-// writePump bombea mensajes desde el hub hacia la conexión WebSocket
+// writePump bombea mensajes desde el hub hacia la conexión WebSocket - enviando cada mensaje como un frame separado
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {

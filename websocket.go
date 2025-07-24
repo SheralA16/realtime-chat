@@ -13,7 +13,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// ⭐ RAILWAY: Permitir conexiones desde cualquier origen
+	//  RAILWAY: Permitir conexiones desde cualquier origen
 	CheckOrigin: func(r *http.Request) bool {
 		// En Railway necesitamos permitir conexiones cross-origin
 		return true
@@ -76,8 +76,8 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	client.hub.register <- client
 
 	// Iniciar las goroutines
-	go client.writePump()
-	go client.readPump()
+	go client.writePump() // Enviar mensajes al cliente
+	go client.readPump()  // Leer mensajes del cliente
 
 	log.Printf("✅ Cliente '%s' procesado desde %s", username, r.RemoteAddr)
 }

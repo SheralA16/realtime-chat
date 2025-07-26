@@ -10,13 +10,12 @@ func main() {
 	// Crear el hub de chat
 	hub := NewHub()
 
-	// Iniciar el hub en una goroutine separada
-	go hub.Run()
+	go hub.Run() // Iniciar el hub e una gorutine para manejar conexiones
 
 	// Configurar rutas HTTP
-	http.HandleFunc("/", serveHome)
+	http.HandleFunc("/", serveHome) // cuando alguien acceda a la ruta raíz
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		serveWS(hub, w, r)
+		serveWS(hub, w, r) // manejar WebSocket en la ruta /ws
 	})
 
 	// Servir archivos estáticos desde el directorio ./static/
@@ -29,17 +28,9 @@ func main() {
 		port = "8080" // Puerto por defecto para desarrollo local
 	}
 
-	// Información de inicio
-	log.Println("🚀 GO O NO GO - Servidor de chat iniciado")
-	log.Printf("📡 Puerto: %s", port)
-	log.Println("💬 WebSocket endpoint: /ws")
-	log.Println("📁 Archivos estáticos servidos desde: ./static/")
-	log.Println("✅ Servidor listo para recibir conexiones...")
-
-	// ⭐ RAILWAY: Usar puerto dinámico
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
-		log.Fatal("❌ Error iniciando servidor HTTP:", err)
+		log.Fatal("Error iniciando servidor HTTP:", err)
 	}
 }
 

@@ -46,13 +46,13 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	// Validar nombre de usuario
 	if username == "" {
-		log.Printf("❌ Nombre de usuario vacío desde %s", r.RemoteAddr)
+		log.Printf("Nombre de usuario vacío desde %s", r.RemoteAddr)
 		http.Error(w, "Nombre de usuario requerido", http.StatusBadRequest)
 		return
 	}
 
 	if !validateUsername(username) {
-		log.Printf("❌ Nombre de usuario inválido: '%s' desde %s", username, r.RemoteAddr)
+		log.Printf("Nombre de usuario inválido: '%s' desde %s", username, r.RemoteAddr)
 		http.Error(w, "Nombre de usuario inválido", http.StatusBadRequest)
 		return
 	}
@@ -60,7 +60,7 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// Actualizar la conexión HTTP a WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("❌ Error actualizando conexión a WebSocket: %v", err)
+		log.Printf("Error actualizando conexión a WebSocket: %v", err)
 		return
 	}
 
@@ -79,5 +79,5 @@ func serveWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.writePump() // Enviar mensajes al cliente
 	go client.readPump()  // Leer mensajes del cliente
 
-	log.Printf("✅ Cliente '%s' procesado desde %s", username, r.RemoteAddr)
+	log.Printf("Cliente '%s' procesado desde %s", username, r.RemoteAddr)
 }

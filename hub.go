@@ -23,7 +23,7 @@ type Hub struct {
 	// Historial de todos los usuarios que se han conectado
 	userHistory map[string]*UserStatus
 
-	// ⭐ AGREGAR ESTAS DOS LÍNEAS:
+	//  AGREGAR ESTAS DOS LÍNEAS:
 	messageHistory []*Message
 	maxHistorySize int
 
@@ -74,8 +74,8 @@ func (h *Hub) Run() {
 
 // isUsernameAvailable verifica si un nombre de usuario está disponible (método privado)
 func (h *Hub) isUsernameAvailable(username string) bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.RLock()         // Bloquear lectura del mapa de clientes
+	defer h.mu.RUnlock() // Desbloquear al final de la función
 
 	// Verificar si hay algún cliente conectado con ese nombre EXACTO
 	for client := range h.clients {
@@ -120,12 +120,12 @@ func (h *Hub) registerClient(client *Client) {
 			client.conn.Close()
 		}()
 
-		return // ⭐ IMPORTANTE: No registrar el cliente
+		return // Salir si el nombre ya está en uso
 	}
 
 	// Si llegamos aquí, el nombre está disponible
-	h.mu.Lock()
-	h.clients[client] = true
+	h.mu.Lock()              // Bloquear escritura del mapa de clientes
+	h.clients[client] = true // Registrar cliente en el mapa
 
 	// Actualizar o crear estado del usuario
 	now := time.Now()
@@ -147,8 +147,7 @@ func (h *Hub) registerClient(client *Client) {
 
 	log.Printf("✅ Cliente '%s' conectado exitosamente. Total de clientes: %d", client.username, clientCount)
 
-	// ⭐ Enviar mensaje de éxito al cliente
-	successMsg := map[string]interface{}{
+	successMsg := map[string]interface{}{ // Mensaje de éxito
 		"type":     "connectionSuccess",
 		"message":  "Conectado exitosamente como " + client.username,
 		"username": client.username,
@@ -161,11 +160,9 @@ func (h *Hub) registerClient(client *Client) {
 		}
 	}
 
-	// Enviar lista de usuarios actualizada
-	h.broadcastUserList()
+	h.broadcastUserList() // Enviar lista de usuarios actualizada
 
-	// Enviar mensaje de sistema
-	joinMsg := NewSystemMessage(client.username + " se ha unido al chat")
+	joinMsg := NewSystemMessage(client.username + " se ha unido al chat") // mensaje de sistema
 	joinMsg.Type = MessageTypeJoin
 
 	if msgBytes, err := json.Marshal(joinMsg); err == nil {
@@ -221,7 +218,7 @@ func (h *Hub) broadcastMessage(message []byte) {
 	h.mu.RUnlock()
 
 	// Debug: mostrar qué se está enviando
-	log.Printf("📤 Enviando mensaje a %d clientes", len(clients))
+	log.Printf("Enviando mensaje a %d clientes", len(clients))
 
 	// Enviar mensaje a cada cliente
 	for _, client := range clients {
@@ -261,12 +258,12 @@ func (h *Hub) broadcastUserList() {
 		"users": users,
 	}
 
-	log.Printf("👥 Enviando lista de %d usuarios a todos los clientes", len(users))
+	log.Printf("Enviando lista de %d usuarios a todos los clientes", len(users))
 
 	if msgBytes, err := json.Marshal(userListMsg); err == nil {
 		h.broadcastMessage(msgBytes)
 	} else {
-		log.Printf("❌ Error serializando lista de usuarios: %v", err)
+		log.Printf("Error serializando lista de usuarios: %v", err)
 	}
 }
 

@@ -96,17 +96,17 @@ func (c *Client) readPump() {
 		if incomingMsg.HasImage && incomingMsg.Image != nil {
 			// Validar que sea una imagen válida
 			if !c.isValidImage(incomingMsg.Image) {
-				log.Printf("⚠️ Imagen inválida recibida de '%s'", c.username)
+
 				c.sendErrorMessage("Imagen inválida. Solo se permiten imágenes de hasta 5MB.")
 				continue
 			}
-			log.Printf("🖼️ Imagen válida recibida de '%s': %s (%d bytes)",
+			log.Printf("Es valida recibida de '%s': %s (%d bytes)",
 				c.username, incomingMsg.Image.Name, incomingMsg.Image.Size)
 		}
 
 		// Validar contenido de texto si no hay imagen
 		if !incomingMsg.HasImage && strings.TrimSpace(incomingMsg.Content) == "" {
-			log.Printf("⚠️ Mensaje vacío recibido de '%s'", c.username)
+			log.Printf("Esta vacío recibido de '%s'", c.username)
 			continue
 		}
 
@@ -114,11 +114,11 @@ func (c *Client) readPump() {
 		var msg *Message
 		if incomingMsg.HasImage && incomingMsg.Image != nil {
 			msg = NewMessageWithImage(c.username, incomingMsg.Content, incomingMsg.Image)
-			log.Printf("💬🖼️ Mensaje con imagen de '%s': texto='%s', imagen='%s'",
+			log.Printf(" Con imagen de '%s': texto='%s', imagen='%s'",
 				c.username, incomingMsg.Content, incomingMsg.Image.Name)
 		} else {
 			msg = NewMessage(c.username, incomingMsg.Content)
-			log.Printf("💬 Mensaje de texto de '%s': '%s'", c.username, incomingMsg.Content)
+
 		}
 
 		// Serializar mensaje completo
@@ -131,9 +131,9 @@ func (c *Client) readPump() {
 		// Enviar al hub para difusión
 		select {
 		case c.hub.broadcast <- messageJSON:
-			log.Printf("📤 Mensaje de '%s' enviado al hub para difusión", c.username)
+			log.Printf("Mensaje de '%s' enviado al hub para difusión", c.username)
 		default:
-			log.Printf("⚠️ Hub ocupado, mensaje de '%s' descartado", c.username)
+			log.Printf("Hub ocupado, mensaje de '%s' descartado", c.username)
 		}
 	}
 }
@@ -188,9 +188,9 @@ func (c *Client) sendErrorMessage(errorText string) {
 	if msgBytes, err := json.Marshal(errorMsg); err == nil {
 		select {
 		case c.send <- msgBytes:
-			log.Printf("📤 Mensaje de error enviado a '%s'", c.username)
+			log.Printf(" F bb, mensaje de error enviado a '%s'", c.username)
 		default:
-			log.Printf("❌ No se pudo enviar mensaje de error a '%s'", c.username)
+			log.Printf("No se pudo enviar mi neto, el mensaje de error a '%s'", c.username)
 		}
 	}
 }
@@ -207,21 +207,21 @@ func (c *Client) writePump() {
 		select {
 		case message, ok := <-c.send:
 			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Printf("Error estableciendo deadline de escritura para '%s': %v", c.username, err)
+				log.Printf("El error estableciendo deadline de escritura para '%s': %v", c.username, err)
 				return
 			}
 
 			if !ok {
 				// El hub cerró el canal
 				if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-					log.Printf("Error enviando mensaje de cierre para '%s': %v", c.username, err)
+					log.Printf("Enviando error, mensaje de cierre para '%s': %v", c.username, err)
 				}
 				return
 			}
 
 			// ⭐ ENVÍO OPTIMIZADO: Un mensaje por WebSocket frame
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				log.Printf("Error escribiendo mensaje para '%s': %v", c.username, err)
+				log.Printf("WARNING XD, escribiendo mensaje para '%s': %v", c.username, err)
 				return
 			}
 
@@ -232,11 +232,11 @@ func (c *Client) writePump() {
 				case nextMessage := <-c.send:
 					// Enviar cada mensaje adicional como frame separado
 					if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-						log.Printf("Error estableciendo deadline para mensaje adicional: %v", err)
+						log.Printf("ERORRRRR, estableciendo deadline para mensaje adicional: %v", err)
 						return
 					}
 					if err := c.conn.WriteMessage(websocket.TextMessage, nextMessage); err != nil {
-						log.Printf("Error enviando mensaje adicional para '%s': %v", c.username, err)
+						log.Printf("FFFFF, enviando mensaje adicional para '%s': %v", c.username, err)
 						return
 					}
 				default:
@@ -248,12 +248,12 @@ func (c *Client) writePump() {
 		case <-ticker.C:
 			// Enviar ping
 			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				log.Printf("Error estableciendo deadline para ping para '%s': %v", c.username, err)
+				log.Printf("FF, deadline para ping para '%s': %v", c.username, err)
 				return
 			}
 
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				log.Printf("Error enviando ping para '%s': %v", c.username, err)
+				log.Printf("WARNINGGG enviando ping para '%s': %v", c.username, err)
 				return
 			}
 		}

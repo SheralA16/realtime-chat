@@ -12,8 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// TestHubCreation prueba la creación correcta de un nuevo hub
-func TestHubCreation(t *testing.T) {
+func TestHubCreation(t *testing.T) { // Test de creación de Hub
 	hub := NewHub()
 
 	if hub.clients == nil {
@@ -36,14 +35,12 @@ func TestHubCreation(t *testing.T) {
 		t.Error("El historial de usuarios no se inicializó")
 	}
 
-	// ✅ CORREGIDO: Usar GetClientCount() que sí existe
-	if hub.GetClientCount() != 0 {
+	if hub.GetClientCount() != 0 { // Verificar que no haya clientes al inicio
 		t.Errorf("Se esperaban 0 clientes inicialmente, pero se encontraron %d", hub.GetClientCount())
 	}
 }
 
-// TestMessageBroadcastBasic prueba el envío básico de mensajes
-func TestMessageBroadcastBasic(t *testing.T) {
+func TestMessageBroadcastBasic(t *testing.T) { // Test básico de difusión de mensajes
 	hub := NewHub()
 	go hub.Run()
 
@@ -74,7 +71,7 @@ sendMessage:
 	msg := NewMessage("testuser", "Mensaje de prueba")
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		t.Fatalf("Error serializando mensaje: %v", err)
+		t.Fatalf("FFF serializando mensaje: %v", err)
 	}
 
 	// Enviar mensaje al hub
@@ -86,19 +83,19 @@ sendMessage:
 	case receivedMsg := <-client.send:
 		var parsedMsg Message
 		if err := json.Unmarshal(receivedMsg, &parsedMsg); err != nil {
-			t.Fatalf("Error parseando mensaje: %v", err)
+			t.Fatalf("EFE parseando mensaje: %v", err)
 		}
 
 		if parsedMsg.Content != "Mensaje de prueba" {
-			t.Errorf("Se esperaba contenido 'Mensaje de prueba', pero se encontró '%s'", parsedMsg.Content)
+			t.Errorf(" AQUI e esperaba contenido 'Mensaje de prueba', pero se encontró '%s'", parsedMsg.Content)
 		}
 
 		if parsedMsg.Username != "testuser" {
-			t.Errorf("Se esperaba username 'testuser', pero se encontró '%s'", parsedMsg.Username)
+			t.Errorf("username 'testuser', pero se encontró '%s'", parsedMsg.Username)
 		}
 
 	case <-time.After(500 * time.Millisecond):
-		t.Error("No se recibió el mensaje en el tiempo esperado")
+		t.Error("No se recibió la respuesta en el tiempo esperado pipipi")
 	}
 }
 
@@ -140,12 +137,12 @@ testImage:
 	msg := NewMessageWithImage("testuser", "Mira esta imagen", imageData)
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		t.Fatalf("Error serializando mensaje con imagen: %v", err)
+		t.Fatalf("eror f mensaje con imagen: %v", err)
 	}
 
 	// Verificar propiedades del mensaje
 	if !msg.HasImage {
-		t.Error("El mensaje debería tener HasImage=true")
+		t.Error(" debería tener HasImage=true")
 	}
 
 	if msg.Image == nil {
@@ -153,7 +150,7 @@ testImage:
 	}
 
 	if msg.Image.Name != "test.png" {
-		t.Errorf("Se esperaba nombre 'test.png', pero se encontró '%s'", msg.Image.Name)
+		t.Errorf("aqui se estaba esperando nombre 'test.png', pero se encontró '%s'", msg.Image.Name)
 	}
 
 	// Enviar al hub
@@ -165,19 +162,19 @@ testImage:
 	case receivedMsg := <-client.send:
 		var parsedMsg Message
 		if err := json.Unmarshal(receivedMsg, &parsedMsg); err != nil {
-			t.Fatalf("Error parseando mensaje con imagen: %v", err)
+			t.Fatalf(" mensaje con imagen: %v", err)
 		}
 
 		if !parsedMsg.HasImage {
-			t.Error("El mensaje recibido debería tener HasImage=true")
+			t.Error("este debería tener HasImage=true")
 		}
 
 		if parsedMsg.Image == nil {
-			t.Error("Los datos de imagen no deberían ser nil en el mensaje recibido")
+			t.Error("no deberian ser nil en el mensaje recibido")
 		}
 
 	case <-time.After(500 * time.Millisecond):
-		t.Error("No se recibió el mensaje con imagen en el tiempo esperado")
+		t.Error("se paso del tiempo esperado")
 	}
 }
 
@@ -232,7 +229,7 @@ func TestClientRegistration(t *testing.T) {
 	// Verificar que se obtiene el nombre de usuario correcto
 	users := hub.GetConnectedUsers()
 	if len(users) != 1 || users[0] != "testuser" {
-		t.Errorf("Se esperaba usuario 'testuser', pero se obtuvo %v", users)
+		t.Errorf("aqui se esperaba recibir usuario 'testuser', pero se obtuvo %v", users)
 	}
 }
 
@@ -257,9 +254,7 @@ func TestDuplicateUsernames(t *testing.T) {
 		t.Fatalf("Primer cliente no se registró correctamente")
 	}
 
-	// ✅ NUEVA PRUEBA: Verificar disponibilidad de nombre
-	// Simular que ya existe un usuario con ese nombre
-	hub.mu.Lock()
+	hub.mu.Lock() // Verificar que el cliente se registró en el mapa
 	if _, exists := hub.clients[client1]; !exists {
 		t.Error("El cliente no se encontró en el mapa de clientes")
 	}
@@ -276,8 +271,7 @@ func TestDuplicateUsernames(t *testing.T) {
 	}
 }
 
-// TestMessageBroadcast prueba la difusión de mensajes
-func TestMessageBroadcast(t *testing.T) {
+func TestMessageBroadcast(t *testing.T) { // Test de difusión de mensajes a múltiples clientes
 	hub := NewHub()
 	go hub.Run()
 
@@ -310,8 +304,7 @@ func TestMessageBroadcast(t *testing.T) {
 		}
 	}
 
-	// Verificar que todos los clientes se registraron
-	if hub.GetClientCount() != numClients {
+	if hub.GetClientCount() != numClients { // Verificar que se registraron todos los clientes
 		t.Fatalf("Se esperaban %d clientes, pero se encontraron %d", numClients, hub.GetClientCount())
 	}
 
@@ -335,12 +328,12 @@ func TestMessageBroadcast(t *testing.T) {
 		case receivedMsg := <-client.send:
 			var parsedMsg Message
 			if err := json.Unmarshal(receivedMsg, &parsedMsg); err != nil {
-				t.Errorf("Cliente %d: Error parseando mensaje recibido: %v", i, err)
+				t.Errorf("Cliente %d: efe mi gato, mensaje recibido: %v", i, err)
 				continue
 			}
 
 			if parsedMsg.Type == MessageTypeSystem {
-				t.Logf("Cliente %d: Recibió mensaje del sistema (ignorado): %s", i, parsedMsg.Content)
+				t.Logf("Cliente %d: mensaje (ignorado): %s", i, parsedMsg.Content)
 				continue
 			}
 
@@ -438,7 +431,7 @@ func TestWebSocketUpgrade(t *testing.T) {
 	// Conectar como cliente WebSocket
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		t.Fatalf("Error conectando WebSocket: %v", err)
+		t.Fatalf("warninggg xd, conectando WebSocket: %v", err)
 	}
 	defer conn.Close()
 
@@ -466,7 +459,7 @@ func TestWebSocketUpgrade(t *testing.T) {
 		var receivedMsg Message
 		if err := conn.ReadJSON(&receivedMsg); err != nil {
 			if attempts == 4 { // Último intento
-				t.Fatalf("Error leyendo mensaje: %v", err)
+				t.Fatalf("F, esta leyendo mensaje: %v", err)
 			}
 			continue
 		}
@@ -482,7 +475,7 @@ func TestWebSocketUpgrade(t *testing.T) {
 	}
 
 	if !messageReceived {
-		t.Error("No se recibió el mensaje de prueba")
+		t.Error("no se recibio mensaje esperado del WebSocket")
 	}
 }
 
@@ -504,7 +497,7 @@ func TestClientDisconnection(t *testing.T) {
 
 	// Verificar que se registró
 	if hub.GetClientCount() != 1 {
-		t.Fatalf("Cliente no se registró correctamente")
+		t.Fatalf("resgistro del cliente no se realizó correctamente")
 	}
 
 	// Desregistrar cliente
@@ -520,10 +513,10 @@ func TestClientDisconnection(t *testing.T) {
 	userHistory := hub.GetUserHistory()
 	if userStatus, exists := userHistory["disconnecttest"]; exists {
 		if userStatus.Connected {
-			t.Error("El usuario debería estar marcado como desconectado")
+			t.Error("deberia marcarse como desconectado en el historial")
 		}
 	} else {
-		t.Error("El usuario debería existir en el historial")
+		t.Error("Existencia de desconexión no encontrada en el historial de usuarios")
 	}
 }
 
@@ -561,13 +554,12 @@ func BenchmarkMessageBroadcast(b *testing.B) {
 	}
 }
 
-// TestRaceConditions prueba específicamente condiciones de carrera
-func TestRaceConditions(t *testing.T) {
+func TestRaceConditions(t *testing.T) { // Test de condiciones de carrera
 	hub := NewHub()
 	go hub.Run()
 
-	const numWorkers = 10         // ✅ REDUCIDO para evitar saturación
-	const operationsPerWorker = 5 // ✅ REDUCIDO para ser más manejable
+	const numWorkers = 10
+	const operationsPerWorker = 5
 
 	var wg sync.WaitGroup
 	createdClients := make([]*Client, 0, numWorkers*operationsPerWorker)
@@ -580,7 +572,7 @@ func TestRaceConditions(t *testing.T) {
 			defer wg.Done()
 
 			for j := 0; j < operationsPerWorker; j++ {
-				// ✅ CORREGIDO: Username válido (sin caracteres especiales)
+
 				username := "race" + string(rune(workerID+'A')) + string(rune(j+'0'))
 
 				// Crear cliente
@@ -597,7 +589,7 @@ func TestRaceConditions(t *testing.T) {
 
 				// Registrar
 				hub.register <- client
-				time.Sleep(2 * time.Millisecond) // ✅ Dar tiempo para procesar
+				time.Sleep(2 * time.Millisecond)
 
 				// Enviar mensaje
 				msg := NewMessage(client.username, "mensaje concurrente "+string(rune(j+'0')))
@@ -611,7 +603,6 @@ func TestRaceConditions(t *testing.T) {
 
 				time.Sleep(2 * time.Millisecond)
 
-				// ✅ DESREGISTRAR INMEDIATAMENTE para evitar leaks
 				hub.unregister <- client
 				time.Sleep(1 * time.Millisecond)
 			}
@@ -620,7 +611,6 @@ func TestRaceConditions(t *testing.T) {
 
 	wg.Wait()
 
-	// ✅ CLEANUP ADICIONAL: Desregistrar cualquier cliente restante
 	time.Sleep(200 * time.Millisecond) // Dar tiempo para que se procesen las desconexiones
 
 	clientsMux.Lock()
@@ -639,7 +629,6 @@ func TestRaceConditions(t *testing.T) {
 	clientCount := hub.GetClientCount()
 	t.Logf("Clientes finales después de operaciones de carrera: %d", clientCount)
 
-	// ✅ EXPECTATIVA MÁS REALISTA: Pocos o ningún cliente
 	if clientCount > 2 { // Margen de tolerancia muy pequeño
 		t.Errorf("Demasiados clientes restantes, posible leak: %d", clientCount)
 	}
@@ -649,9 +638,9 @@ func TestRaceConditions(t *testing.T) {
 	if msgBytes, err := json.Marshal(testMsg); err == nil {
 		select {
 		case hub.broadcast <- msgBytes:
-			t.Logf("✅ Sistema responde correctamente después de operaciones de carrera")
+			t.Logf("Mensaje de prueba enviado exitosamente al hub")
 		case <-time.After(100 * time.Millisecond):
-			t.Error("❌ Sistema no responde, posible deadlock")
+			t.Error("no se recibio mensaje de prueba en el tiempo esperado")
 		}
 	}
 }
